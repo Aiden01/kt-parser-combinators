@@ -33,6 +33,16 @@ class Parser<T>(val f: (String) -> ParseResult<T>) {
         }
     }
 
+    fun ensure(error: String, f: (T) -> Boolean) = Parser {
+        parse(it).flatMap { (stream, r) ->
+            if (f(r)) {
+                Right(Pair(stream, r))
+            } else {
+                Left(error)
+            }
+        }
+    }
+
     infix fun or(p: Parser<T>) = Parser {
         val r = parse(it)
         when (r) {

@@ -15,12 +15,23 @@ fun String.toPair(): Pair<Char, String> {
     return Pair(fst, snd)
 }
 
+fun <A, B> Pair<A, B>.swap() = Pair(this.second, this.first)
+
+fun satisfy(f: (Char) -> Boolean) = Parser {
+    val (x, xs) = it.toPair()
+    if (f(x)) {
+        Right(Pair(xs, x))
+    } else {
+        Left("Unknown parse error")
+    }
+}
+
 fun char(c: Char) = Parser {
     val (x, xs) = it.toPair()
-    if (x != c) {
-        Left("Expected character $c")
-    } else {
+    if (x == c) {
         Right(Pair(xs, x))
+    } else {
+        Left("Expected char $c")
     }
 }
 
@@ -39,7 +50,8 @@ fun <A> choice(parsers: List<Parser<A>>) =
             .fold(parsers.first()) { prev, p -> prev.or(p) }
 
 
-fun <A> _many(stream: String, p: Parser<A>, results: List<A>): Pair<String, List<A>> {
+
+private fun <A> _many(stream: String, p: Parser<A>, results: List<A>): Pair<String, List<A>> {
     val r = p.parse(stream)
     return when(r) {
         is Either.Left -> Pair(stream, results)
@@ -47,18 +59,37 @@ fun <A> _many(stream: String, p: Parser<A>, results: List<A>): Pair<String, List
     }
 }
 
+fun oneOf(items: String) = Parser { 
+    val (x, xs) = it.toPair()
+    if (items.contains(x)) {
+        Right(Pair(xs, x))
+    } else {
+        Left("Expected one of $items")
+    }
+ }
+
 fun <A> many(p: Parser<A>) = Parser {
     Right(_many(it, p, listOf()))
 }
 
+
+fun <A> many1(p: Parser<A>) = p.andThenR(many(p))
+
 fun digit() = Parser {
-    val (x, xs) = it.toPair()
-    if (x.isDigit()) {
-        Right(Pair(xs, x))
+    if (it == "") {
+        Left("Stream is empty")
     } else {
-        Left("Expected digit")
+        val (x, xs) = it.toPair()
+        if (x.isDigit()) {
+            Right(Pair(xs, x))
+        } else {
+            Left("Expected digit")
+        }
     }
 }
+
+
+fun integerLiteral() = many(digit()).fmap { it.joinToString("") }
 
 fun <A, B> between(p1: Parser<A>, p2: Parser<B>, p3: Parser<A>) = p1.andThenR(p2).andThenL(p3)
 
@@ -67,10 +98,12 @@ fun <A> brackets(p: Parser<A>) = between(char('['), p, char(']'))
 fun <A> braces(p: Parser<A>) = between(char('{'), p, char('}'))
 
 fun colon() = char(':')
+fun newline() = char('\n')
+fun semi() = char(';')
 fun space() = char(' ')
 fun spaces() = many1(space())
 
+fun anyChar() = Parser { Right(it.toPair().swap()) }
+
 fun <A> lexeme(p: Parser<A>) = p.andThenL(spaces())
 
-
-fun <A> many1(p: Parser<A>) = p.andThenR(many(p))
