@@ -2,6 +2,8 @@ package com.aiden.ktparsec
 
 import arrow.core.Either
 import arrow.core.flatMap
+import arrow.core.Left
+import arrow.core.Right
 
 
 typealias ParseError = String
@@ -19,8 +21,16 @@ class Parser<T>(val f: (String) -> ParseResult<T>) {
             g(r).parse(stream)
         }
     }
-    fun <B> andThen(p: Parser<B>) = Parser {
+    fun <B> andThenR(p: Parser<B>) = Parser {
         parse(it).flatMap {(stream, _) -> p.parse(stream)}
+    }
+
+    fun <B> andThenL(p: Parser<B>) = Parser {
+        parse(it).flatMap {(stream , r) -> 
+            p.parse(stream).flatMap { (s, _) ->
+                Right(Pair(s, r))
+            }
+        }
     }
 
     infix fun or(p: Parser<T>) = Parser {
